@@ -1,0 +1,18 @@
+marker_label,marker_name
+FSC-A,FSC-A
+FSC-H,FSC-H
+FSC-W,FSC-W
+SSC-A,SSC-A
+SSC-H,SSC-H
+SSC-W,SSC-W
+FITC-A,F4/80
+PerCP-Cy5-5-A,CD45.2
+Alexa Fluor 700-A,Ly6G
+APC-Cy7-A,MHC II
+Pacific Blue-A,CD11b
+BV711-A,Ly6C
+BUV496-A,Live/Dead
+PE-A,PD-1
+PE-CF594-A,CD45.1
+TIME,TIME
+PE-Cy7-A,CD11c
