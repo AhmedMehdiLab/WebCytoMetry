@@ -1,16 +1,27 @@
-
-# project and visualize
-# TODO provide metas
+#' Title
+#'
+#' @param flow_annos
+#' @param live_scaled
+#' @param pheno_S
+#' @param colour
+#' @param facet
+#' @param clusts
+#' @param metas
+#'
+#' @return
+#' @export
+#'
+#' @examples
 flow_proj_plot <- function(flow_annos, live_scaled, pheno_S, colour = "Strain", facet = "Strain", clusts = NULL, metas = NULL) {
   library(Radviz)
   library(tidyverse)
   files <- flow_annos[[1]]
   experiments <- flow_annos[[2]]
   time <- flow_annos[[3]]
-  
+
   clusts <- if (is.null(clusts)) NA else clusts
   metas <- if (is.null(metas)) NA else metas
-  
+
   colnames(live_scaled) <- make.names(colnames(live_scaled))
   pheno.rv <- do.radviz(live_scaled, pheno_S)
   #browser()
@@ -74,25 +85,34 @@ flow_proj_plot <- function(flow_annos, live_scaled, pheno_S, colour = "Strain", 
     scale_fill_continuous(low = "white", high = "dodgerblue4") +
     guides(fill = FALSE) +
     facet_grid( ~ .data[[facet]])
-  
+
   strain <- pheno.rv.proj +
     geom_density2d(aes(x = rx, y = ry, color = !!sym(colour)), size = 2) +
     geom_point(aes(x = rx, y = ry, color = !!sym(colour))) +
     facet_grid( ~ .data[[facet]])
-  
+
   #browser()
   meta <- pheno.rv.proj +
     geom_point(aes(x = rx, y = ry, color=Metacluster), size=0.5)+
     facet_grid(~ .data[[facet]])
-  
+
   indiv <- pheno.rv.proj +
     geom_point(aes(x = rx, y = ry, color=Metacluster), size=0.5)+
     facet_wrap(~ Individual)
-  
+
   return(list(density = densityx, strain = strain, meta = meta, indiv = indiv))
 }
 
-# compare experiments through 1D projections
+#' Title
+#'
+#' @param live.df
+#' @param pheno_S
+#' @param files_filt
+#'
+#' @return
+#' @export
+#'
+#' @examples
 flow_proj_explore <- function(live.df, pheno_S, files_filt) {
   files.include <- files_filt
   live.df %>%
