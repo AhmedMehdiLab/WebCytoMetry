@@ -8,6 +8,8 @@ import_fcs_path(fcs_path, marker_index = 1)
 }
 \arguments{
 \item{fcs_path}{path: path to FCS folder}
+
+\item{marker_index}{optional: index of flowFrame to use as panel source}
 }
 \value{
 parsed FCS data

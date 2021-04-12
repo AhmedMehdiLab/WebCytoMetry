@@ -4,124 +4,148 @@ library(WebCytoMetry)
 
 server <- function(input, output, session) {
 
-  # store values
+  # data storage
   cache <- reactiveValues()
-  flow_data <- reactiveValues()
-  flow <- reactive({req(input$home_source); flow_data[[input$home_source]]})
+  cache$items <- list()
 
-  # load data
+  # populate cache
   isolate({
-    item <- import_fcs_root(system.file("extdata", package = "WebCytoMetry"))
-    for (name in names(item)) flow_data[[name]] <- item[[name]]
+    #item <- import_fcs_root(system.file("extdata", package = "WebCytoMetry"))
+    #for (name in names(item)) cache$items[[name]] <- item[[name]]
+    cache$items$KatJanin <- readRDS(system.file("extdata", "KatJanin.rds", package = "WebCytoMetry"))
   })
 
   # extract data
-  data <- reactive({if (is.null(input$home_trans)) flow()$data else flowCore::transform(flow()$data, flowCore::transformList(input$home_trans, flowCore::arcsinhTransform(a = input$home_trans_a, b = input$home_trans_b, c = input$home_trans_c)))})
-  meta <- reactive({req(data()); flowCore::pData(data())})
-  panel <- reactive({flow()$panel})
-  channels <- reactive({setNames(panel()$antigen, panel()$external)})
+  item <- reactive({
+    req(input$home_source)
+    cache$items[[input$home_source]]
+  })
+  flow <- reactive({
+    if (is.null(input$home_trans)) item()$data
+    else flowCore::transform(item()$data, flowCore::transformList(input$home_trans, flowCore::arcsinhTransform(a = input$home_trans_a, b = input$home_trans_b, c = input$home_trans_c)))
+  })
+  meta <- reactive({
+    req(flow())
+    flowCore::pData(flow())
+  })
+  panel <- reactive({item()$panel})
+  ch_antigen <- reactive({setNames(panel()$antigen, panel()$external)})
+  ch_colname <- reactive({setNames(panel()$fcs_colname, panel()$external)})
+
+  meta_labs <- reactive({extract_labels(flow())})
+  metaclust <- reactive({
+    validate(need(isTruthy(cluster()), "Cluster data before proceeding"))
+
+    labels <- meta_labs()
+    labels$cluster <- cluster()$cluster_id
+    labels %>% dplyr::left_join(CATALYST::cluster_codes(cluster()), by = c("cluster" = "som100"))
+  })
+  code_name <- reactive({req(cluster()); cluster() %>% CATALYST::cluster_codes() %>% names() %>% stringr::str_subset("meta")})
+  flow_expr <- reactive({extract_expressions(flow(), panel())})
+  flow_exps <- reactive({scale_expressions(flow_expr(), input$xp_range)})
+  files_inc <- reactive({
+    req(input$files_min)
+    extract_files(meta_labs(), input$files_min)
+  })
 
   # update inputs
-  observe({updateSelectInput(session, "home_source", choices = names(flow_data))})
-  observe({updateSelectInput(session, "home_trans", choices = setNames(panel()$fcs_colname, panel()$external))})
-  observe({updateSelectInput(session, "cl_channels", choices = channels())})
-  observe({updateSelectInput(session, "heat_channels", choices = channels())})
-  observe({updateSelectInput(session, "heat_axis", choices = c("Abundances" = "abundances", "State" = "state", channels()))})
-  observe({updateSelectInput(session, "dr_color", choices = c("meta20", intersect(names(meta()), c("condition", "sample_id", "patient_id")), channels()))})
+  observe({updateSelectInput(session, "home_source", choices = names(cache$items))})
+  observe({updateSelectInput(session, "home_trans", choices = ch_colname())})
+  observe({updateSelectInput(session, "cl_channels", choices = ch_antigen())})
+  observe({req(cluster()); updateSelectInput(session, "cl_k", choices = code_name())})
+  observe({updateSelectInput(session, "heat_channels", choices = ch_antigen())})
+  observe({updateSelectInput(session, "heat_axis", choices = c("Abundances" = "abundances", "State" = "state", ch_antigen()))})
+  observe({updateSelectInput(session, "dr_color", choices = c(intersect(names(meta()), c("condition", "sample_id", "patient_id")), code_name(), ch_antigen()))})
   observe({updateSelectInput(session, "dr_facet", choices = c("None" = "__none__", intersect(names(meta()), c("condition", "sample_id", "patient_id"))))})
+  observe({updateSelectInput(session, "mem_channels", choices = ch_antigen())})
+  observe({updateSelectInput(session, "mem_background", choices = ch_antigen())})
+  observe({updateSelectInput(session, "sim_channels", choices = ch_antigen())})
+  observe({updateSelectInput(session, "ch_channels", choices = ch_antigen())})
+  observe({updateSelectInput(session, "ch_colour", choices = names(metaclust()))})
+  observe({updateSelectInput(session, "ch_facet", choices = names(metaclust()))})
 
   # calculate
-  cluster <- reactive({validate(need(length(input$cl_channels) > 1, message = "Select two or more channels")); data() %>% CATALYST::prepData(panel(), meta()) %>% CATALYST::cluster(input$cl_channels)})
-  reduction <- reactive({CATALYST::runDR(cluster(), input$dr_method, if (input$dr_cells != 0) input$dr_cells, features = NULL)})
+  cluster <- reactive({
+    validate(need(length(input$cl_channels) > 1, "Select two or more channels"))
+    calc_cluster(flow(), panel(), input$cl_channels, input$cl_clusters)
+  })
 
-  expression <- reactive({get_expressions(data(), panel())})
-  exp_scaled <- reactive({scale_expressions(expression()$matrix, input$xp_range)})
-  files_incl <- reactive({req(input$filt_cell); filter_files(expression()$labels, input$filt_cell)})
+  mem <- reactive({calc_mem(flow_expr(), meta_labs(), input$mem_channels, input$mem_sample)})
+  som <- reactive({calc_som(flow(), panel()$fcs_colname[which(panel()$antigen %in% input$cl_channels)], input$cl_clusters)})
 
-  gate <- reactive({flowWorkspace::GatingSet(data())})
+  som_mapping <- reactive({som()$FlowSOM$map$mapping[, 1]})
+  sim_hilbert <- reactive({
+    validate(need(!is.null(input$sim_channels), "Select one or more channels"))
+    calc_sim_hilbert(flow_exps(), meta_labs(), files_inc()$files, input$sim_channels, input$sim_bins, input$sim_dims)
+  })
+  sim_cosine <- reactive({calc_sim_cosine(flow_exps(), meta_labs(), files_inc()$files)})
 
   # generate outputs
   observeEvent(input$home_source, {
-    new_index <- seq_along(data())
+    new_index <- seq_along(flow())
     new_data <- list()
 
     for (i in cache$home_view) removeTab("home_view", i)
-    lapply(new_index, function(i) {
+    lapply(rev(new_index), function(i) {
       new_id <- stringr::str_c("view_", i)
-      new_data[[new_id]] <- data()[[i]]
-      new_panel <- tabPanel(i, verbatimTextOutput(new_id))
-      output[[new_id]] <- renderPrint(data()[[i]])
-      appendTab("home_view", new_panel)
+      new_data[[new_id]] <- flow()[[i]]
+      prependTab("home_view", tabPanel(i, verbatimTextOutput(new_id)), TRUE)
+      output[[new_id]] <- renderPrint(flow()[[i]])
     })
 
     cache$home_view <- new_index
   })
 
   # display outputs
-  output$home_info <- renderPrint({data()})
-  output$cl_abundance <- renderPlot({CATALYST::plotAbundances(cluster(), by = input$cl_abundance)})
-  output$cl_code <- renderPlot(CATALYST::plotCodes(cluster()))
-  output$cl_expr <- renderPlot({CATALYST::plotClusterExprs(cluster(), features = NULL)})
-  output$heat_expr <- renderPlot({
+  output$home_main <- renderPrint({flow()})
+
+  output$cl_abundance <- renderPlot({CATALYST::plotAbundances(cluster(), input$cl_k, input$cl_abundance_by)})
+  output$cl_code <- renderPlot({CATALYST::plotCodes(cluster(), input$cl_k)})
+  output$cl_expr <- renderPlot({CATALYST::plotClusterExprs(cluster(), input$cl_k, NULL)})
+  output$expr_heat <- renderPlot({
     validate(
-      need(length(input$heat_channels) != 0, "Select one or more channels to display"),
+      need(!is.null(input$heat_channels), "Select one or more channels"),
       need(input$heat_by != "both" || length(input$heat_channels) == 1, "Select one channel to aggregate by both Cluster ID and Sample ID")
     )
-    CATALYST::plotExprHeatmap(cluster(), input$heat_channels, input$heat_by, bars = TRUE, perc = TRUE)
+    CATALYST::plotExprHeatmap(cluster(), input$heat_channels, input$heat_by, input$cl_k, bars = TRUE, perc = TRUE)
   })
-  output$heat_freq <- renderPlot({CATALYST::plotFreqHeatmap(cluster())})
-  output$xp_matrix <- renderDataTable({expression()$matrix})
-  output$xp_scaled <- renderDataTable({exp_scaled()})
-  output$filt_view <- renderPlot({files_incl()$plot})
-  output$filt_file <- renderText({stringr::str_c("Selected:\n", stringr::str_c(files_incl()$files, collapse = "\n"))})
-  output$dr_view <- renderPlot({withProgress(CATALYST::plotDR(reduction(), NULL, input$dr_color, if (input$dr_facet != "__none__") input$dr_facet), message = "Loading...")})
+  output$freq_heat <- renderPlot({CATALYST::plotFreqHeatmap(cluster(), input$cl_k)})
+  output$dr_plot <- renderPlot({
+    cluster() %>%
+      CATALYST::runDR(input$dr_method, if (input$dr_cells != 0) input$dr_cells, features = NULL) %>%
+      CATALYST::plotDR(NULL, input$dr_color, if (input$dr_facet != "__none__") input$dr_facet)
+  })
+
+  output$xp_matrix <- renderDataTable({flow_expr()})
+  output$xp_scaled <- renderDataTable({flow_exps()})
+  output$file_view <- renderText({stringr::str_c("Selected:\n", stringr::str_c(files_inc()$files, collapse = "\n"))})
+  output$file_plot <- renderPlot({files_inc()$plot})
+
+  output$mem_view <- renderDataTable({mem()})
+  output$mem_plot <- renderPlot({
+    mem() %>%
+      ggplot2::ggplot(ggplot2::aes(x = file_name, y = MEM, color = !!rlang::sym(input$mem_colour))) +
+      ggplot2::geom_point() +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, vjust = 1, hjust = 1))
+  })
+
+  output$simh_view <- renderDataTable({sim_hilbert()$hilbert})
+  output$simh_plot <- renderPlot({
+    sim_hilbert()$hilbert %>%
+      ggplot2::ggplot(ggplot2::aes(x = V1, y = V2, color = !!rlang::sym(input$sim_colour), size = Cells)) +
+      ggplot2::geom_point()
+  })
+  output$simh_hier <- renderPlot({plot(hclust(sim_hilbert()$dists))})
+  output$simc_view <- renderDataTable({sim_cosine()})
+  output$simc_heat <- renderPlot({heatmap(sim_cosine(), symm = TRUE)})
+  output$projection <- renderPlot({
+    validate(need(length(input$ch_channels) > 1, "Select two or more channels"))
+    plot_radviz(flow_exps(), metaclust(), sim_cosine(), input$ch_channels, input$ch_colour, input$ch_facet)
+  })
+
+  output$som_star <- renderPlot({FlowSOM::PlotStars(som()$FlowSOM, backgroundValues = som()$metaclustering)})
+  output$som_volcano <- renderPlot({calc_glmmadmb(metaclust(), files_inc(), input$cl_k) %>% ggplot2::ggplot(ggplot2::aes(Estimate, logPValue, color = Meta))})
+  output$mem_volcano <- renderPlot({calc_contrast(mem(), input$mem_background)})
 
   output$debug <- renderText({browser(); TRUE})
-
-  # load input data
-  # raw_flow <- reactive({raw_flows[[input$source]]})
-  # raw_data <- reactive({raw_flow()$data})
-  # raw_pane <- reactive({raw_flow()$pane})
-  # raw_meta <- reactive({flowCore::pData(raw_data())})
-  #
-  # # compute matrix
-  # channels <- reactive({
-  #   cols <- setNames(flowCore::colnames(raw_data()), raw_pane()$antigen)
-  #   cols <- cols[cols %in% input$channels]
-  #   names(cols)})
-  # phenofunc <- reactive({
-  #   allc <- union(input$phenotypic, input$functional)
-  #   cols <- setNames(flowCore::colnames(raw_data()), raw_pane()$antigen)
-  #   cols <- cols[cols %in% allc]
-  #   names(cols)})
-  # m_data <- reactive({flow_matrix(gate(), channels = channels())})
-  # matrix <- reactive({m_data()$matrix})
-  # scaled <- reactive({m_data()$scaled})
-  #
-  # # annotate channels
-  # annos <- reactive({flow_annos(gate())})
-  # files <- reactive({flow_filter(annos(), input$filter)})
-  # mem <- reactive({flow_calc_mem(matrix(), files(), annos(), channels())})
-  # sim <- reactive({flow_similarity(annos(), scaled(), files(), phenofunc())})
-  # chan <- reactive({flow_order_channels(scaled(), sim()$sim, phenofunc())})
-  # som <- reactive({flow_start_flowSOM(gate(), input$functional, input$phenotypic)})
-  # proj <- reactive({flow_proj_plot(annos(), scaled(), chan()$S, clusts = som()$clust, metas = som()$meta)})
-  # sx <- reactive({flow_FlowSOM(matrix(), files(), som()$som, annos(), phenofunc(), som()$meta, som()$clust)})
-
-  # output$clust_exp <- renderPlot(CATALYST::plotClusterExprs(cluster(), features = input$features))
-  #
-  # output$strains <- renderPlot(flow_plot_strain(annos()))
-  # output$mem <- renderPlot(flow_plot_mem(mem()$mem))
-  # output$sim <- renderPlot(sim()$plot)
-  # output$simc <- renderPlot({plot(hclust(as.dist(as.matrix(sim()$dist)[files(), files()])))})
-  # output$simp <- renderPlot({heatmap(sim()$sim, symm = TRUE)})
-  # output$chano <- renderPlot(chan()$plot)
-  # output$chand <- renderPlot(proj()$density)
-  # output$chans <- renderPlot(proj()$strain)
-  # output$chanm <- renderPlot({proj()$meta})
-  # output$proje <- renderPlot(flow_proj_explore(mem()$df, chan()$S, files()))
-  # output$ps <- renderPlot(sx()$stars)
-  # output$px <- renderPlot(sx()$meta)
-  # output$pv <- renderPlot(sx()$volcano)
-  # output$pc <- renderPlot(sx()$contrast)
 }

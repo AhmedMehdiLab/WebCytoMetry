@@ -5,6 +5,7 @@
 #' `Experiment`) and `markers.csv` (with `marker_label` and `marker_name`).
 #'
 #' @param fcs_path path: path to FCS folder
+#' @param marker_index optional: index of flowFrame to use as panel source
 #'
 #' @importFrom magrittr %>%
 #' @return parsed FCS data
@@ -14,8 +15,7 @@
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 import_fcs_path <- function(fcs_path, marker_index = 1) {
   # process FCS files
-  fcs_list <- list.files(file.path(fcs_path, "fcs"), full.names = TRUE)
-  fcs_data <- fcs_list %>% ncdfFlow::read.ncdfFlowSet() %>% ncdfFlow::as.flowSet()
+  fcs_data <- suppressWarnings(flowCore::read.flowSet(path = file.path(fcs_path, "fcs")))
 
   # assign metadata
   fcs_names <- flowCore::pData(fcs_data)$name
@@ -45,7 +45,7 @@ import_fcs_path <- function(fcs_path, marker_index = 1) {
 
   # extract parameter names
   panel <- flowCore::pData(flowCore::parameters(fcs_data[[marker_index]])) %>%
-    dplyr::select(fcs_colname = name, antigen = desc, external = desc) %>%
+    dplyr::select(fcs_colname = .data$name, antigen = .data$desc, external = .data$desc) %>%
     tibble::tibble()
   for (i in seq_len(nrow(panel))) {
     match <- which(panel$antigen == markers$marker_label[i])
