@@ -10,7 +10,7 @@ extract_labels(flow)
 \item{flow}{value from \code{\link{import_fcs_path}}}
 }
 \value{
-tibble: metadata labels
+tibble: expression labels
 }
 \description{
 Extract metadata labels for expression data from flowSet

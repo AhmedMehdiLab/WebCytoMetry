@@ -1,5 +1,11 @@
 library(shiny)
 
+NONE <- c("None" = "__NULL__")
+CLUSTER <- c("Cluster" = "cluster_id")
+CONDITION <- c("Condition" = "condition")
+PATIENT <- c("Patient" = "patient_id")
+SAMPLE <- c("Sample" = "sample_id")
+
 pane_main <- tabPanel(
   "Home",
   sidebarLayout(
@@ -19,26 +25,31 @@ pane_cluster <- tabPanel(
   "Cluster",
   sidebarLayout(
     sidebarPanel(
-      selectInput("cl_channels", "Channels", NULL, multiple = TRUE),
-      numericInput("cl_clusters", "Max Clusters", 10, 2, 30),
-      selectInput("cl_k", "Clustering", NULL), hr(),
-      selectInput("cl_abundance_by", "Abundance Mode", c("Cluster" = "cluster_id", "Sample" = "sample_id")),
-      selectInput("heat_channels", "Expression Heatmap Channels", NULL, multiple = TRUE),
-      selectInput("heat_by", "Aggregate by", c("Cluster" = "cluster_id", "Sample" = "sample_id", "Both cluster and sample" = "both")), hr(),
+      selectInput("som_channels", "Channels", NULL, multiple = TRUE),
+      fluidRow(column(4, numericInput("som_x", "SOM X", 10, 2, 20)),
+               column(4, numericInput("som_y", "SOM Y", 10, 2, 20)),
+               column(4, numericInput("som_max", "Metaclusters", 10, 2, 20))),
+      selectInput("som_meta", "Metacluster", NULL), hr(),
+
+      selectInput("abnd_mode", "Abundance", c(CLUSTER, SAMPLE)),
+      fluidRow(column(6, selectInput("abnd_group", "Group", c(NONE, CONDITION, PATIENT))),
+               column(6, selectInput("abnd_shape", "Shape", c(NONE, CONDITION, PATIENT)))), hr(),
+
+      selectInput("heat_expr", "Heatmap Expression", NULL, multiple = TRUE),
+      selectInput("heat_freq", "Heatmap Frequency", NULL), hr(),
+
       selectInput("dr_method", "Reduction Method", c("Uniform Manifold Approximation and Projection" = "UMAP", "t-Distributed Stochastic Neighbor Embedding" = "TSNE", "Principal Component Analysis" = "PCA", "Multi-Dimensional Scaling" = "MDS", "Diffusion Map" = "DiffusionMap")),
-      numericInput("dr_cells", "Cells", 50, 0),
-      helpText("All cells will be used if set to 0"),
-      selectInput("dr_color", "Color by", NULL),
-      selectInput("dr_facet", "Facet by", NULL) ),
+      fluidRow(column(6, selectInput("dr_color", "Color by", NULL)),
+               column(6, selectInput("dr_facet", "Facet by", NULL))),
+      numericInput("dr_cells", "Cells Per Sample", 50, 0),
+      helpText("All cells will be used if set to 0")),
     mainPanel(tabsetPanel(
-      tabPanel("Abundances", plotOutput("cl_abundance")),
-      tabPanel("Codes", plotOutput("cl_code")),
-      tabPanel("Cluster Expressions", plotOutput("cl_expr")),
-      tabPanel("Expression Heatmap", plotOutput("expr_heat")),
-      tabPanel("Frequency Heatmap", plotOutput("freq_heat")),
-      tabPanel("Reduction", plotOutput("dr_plot")),
-      tabPanel("Star", plotOutput("som_star")),
-      tabPanel("Volcano", plotOutput("som_volcano")) ))))
+      tabPanel("Abundances", plotOutput("plot_abnd")),
+      tabPanel("Codes", plotOutput("plot_code")),
+      tabPanel("Cluster Expressions", plotOutput("plot_clxp")),
+      tabPanel("Heatmap", plotOutput("plot_heat")),
+      tabPanel("Reduction", plotOutput("plot_dr")),
+      tabPanel("Star", plotOutput("plot_star")) ))))
 
 pane_filter <- tabPanel(
   "Filter",

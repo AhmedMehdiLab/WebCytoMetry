@@ -2,27 +2,28 @@
 % Please edit documentation in R/calculate.R
 \name{calc_summary}
 \alias{calc_summary}
-\title{Calculate summary}
+\title{Summarize expression data for each channel}
 \usage{
-calc_summary(flow_expr, exp_label, selected)
+calc_summary(expr_anno, grouping)
 }
 \arguments{
-\item{flow_expr}{output of \code{\link{extract_expressions}}}
+\item{expr_anno}{output of \code{\link{collate_expressions}}}
 
-\item{exp_label}{output of \code{\link{extract_labels}}}
-
-\item{selected}{selected channel}
+\item{grouping}{columns to group by}
 }
 \value{
-tibble: summary
+tibble: summarized expression data
 }
 \description{
-Calculate summary
+Summarize expression data for each channel
 }
 \examples{
+\dontrun{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
 exp_label <- extract_labels(flow_item$data)
+expr_anno <- collate_expressions(flow_expr, exp_label)
 
-summary <- calc_summary(flow_expr, exp_label, flow_item$panel$antigen[1])
+summary <- calc_summary(expr_anno, c("channel", "strain", "time", "file"))
+}
 }

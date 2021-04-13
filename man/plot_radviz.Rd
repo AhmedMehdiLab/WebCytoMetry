@@ -4,30 +4,15 @@
 \alias{plot_radviz}
 \title{Project expressions into a two-dimensional circular plot}
 \usage{
-plot_radviz(
-  flow_exps,
-  exp_label,
-  sim_cosine,
-  channels,
-  colour = "experiment",
-  facet = "experiment"
-)
+plot_radviz(exps_anno, channels)
 }
 \arguments{
-\item{flow_exps}{output of \code{\link{scale_expressions}}}
+\item{exps_anno}{output of \code{\link{collate_expressions}}}
 
-\item{exp_label}{output of \code{\link{extract_labels}}}
-
-\item{sim_cosine}{output of \code{\link{calc_sim_cosine}}}
-
-\item{channels}{selected channels}
-
-\item{colour}{optional: dot color}
-
-\item{facet}{optional: plot facet}
+\item{channels}{character: selected channels}
 }
 \value{
-ggplot2: projection
+see \code{\link[Radviz]{do.radviz}}
 }
 \description{
 Project expressions into a two-dimensional circular plot
@@ -35,10 +20,10 @@ Project expressions into a two-dimensional circular plot
 \examples{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-flow_exps <- scale_expressions(flow_expr)
+flow_exps <- scale_expressions(flow_expr, c(0, 1))
 exp_label <- extract_labels(flow_item$data)
-files_inc <- extract_files(exp_label)
+exps_anno <- collate_expressions(flow_exps, exp_label)
 
-sim_cosine <- calc_sim_cosine(flow_exps, exp_label, files_inc$files)
-plot_radviz <- plot_radviz(flow_exps, exp_label, sim_cosine, flow_item$panel$antigen)
+plot_radviz <- plot_radviz(exps_anno, flow_item$panel$antigen)
+plot(plot_radviz)
 }

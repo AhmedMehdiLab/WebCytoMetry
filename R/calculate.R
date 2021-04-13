@@ -2,25 +2,42 @@
 #'
 #' @param flow value from \code{\link{import_fcs_path}}
 #' @param panel value from \code{\link{import_fcs_path}}
-#' @param channels channels to cluster
-#' @param clusters optional: number of metaclusters
+#' @param channels character: channels to consider
+#' @param grid_x optional integer: number of columns of self-organising map
+#' @param grid_y optional integer: number of rows of self-organising map
+#' @param clusters optional integer: number of clusters to generate
 #'
-#' @return clustered flowSet
+#' @return SingleCellExperiment with added cluster information
 #' @export
 #'
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-#'
-#' cluster <- calc_cluster(flow_item$data, flow_item$panel, flow_item$panel$antigen)
-calc_cluster <- function(flow, panel, channels, clusters = 20) {
+#' cluster <- do_cluster(flow_item$data, flow_item$panel, flow_item$panel$antigen)
+do_cluster <- function(flow, panel, channels, grid_x = 10, grid_y = 10, clusters = 20) {
   CATALYST::prepData(flow, panel, flowCore::pData(flow)) %>% CATALYST::cluster(channels, maxK = clusters)
+}
+
+#' Run FlowSOM on flowSet
+#'
+#' @param flow value from \code{\link{import_fcs_path}}
+#' @param channels character: channels to consider
+#' @param grid_x optional integer: number of columns of self-organising map
+#' @param grid_y optional integer: number of rows of self-organising map
+#' @param clusters optional integer: number of clusters to generate
+#'
+#' @return see \code{\link[FlowSOM]{FlowSOM}}
+#' @export
+#'
+#' @examples
+#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' som <- do_som(flow_item$data, flow_item$panel$fcs_colname)
+do_som <- function(flow, channels, grid_x = 10, grid_y = 10, clusters = 20) {
+  FlowSOM::FlowSOM(flow, colsToUse = channels, nClus = clusters)
 }
 
 #' Perform marker enrichment modeling
 #'
-#' @param summary output of \code{\link{calc_summary}}
-#' @param downsample [0, 1) optional: sampling factor
-#' @param seed optional: random seed
+#' @param expr_anno output of \code{\link{collate_expressions}}
 #'
 #' @return tibble: MEM values
 #' @export
@@ -29,57 +46,59 @@ calc_cluster <- function(flow, panel, channels, clusters = 20) {
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 #' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
 #' exp_label <- extract_labels(flow_item$data)
+#' expr_anno <- collate_expressions(flow_expr, exp_label)
 #'
-#' summary <- calc_summary(flow_expr, exp_label, flow_item$panel$antigen[1])
-#' mem <- calc_mem(summary)
-calc_mem <- function(summary, downsample = 1, seed = 1) {
-  set.seed(seed)
+#' mem <- calc_mem(expr_anno)
+calc_mem <- function(expr_anno) {
+  # calculate summary
+  summary <- calc_summary(expr_anno, c("channel", "strain", "time", "file"))
 
-  # select reference file as closest to medoid
-  reference <- levels(summary$file_name)[cluster::pam(summary$median, 1)$id.med]
+  # calculate medoids
+  medoids <- summary %>%
+    dplyr::group_by(.data$channel) %>%
+    dplyr::summarise(index = cluster::pam(.data$median, 1)$id.med,
+                     median = .data$median[.data$index],
+                     iqr = .data$iqr[.data$index])
 
   # calculate marker enrichment modelling
-  summary %>% dplyr::mutate(
-    deviation = median - median[file_name == reference],
-    ratio = iqr / iqr[file_name == reference],
-    mem = asinh((abs(deviation) + 1 / ratio - 1) * sign(deviation)),
-    mem = 10 * mem / max(abs(mem)))
+  summary %>%
+    dplyr::mutate(
+      deviation = .data$median - medoids$median[match(.data$channel, medoids$channel)],
+      ratio = .data$iqr / medoids$iqr[match(.data$channel, medoids$channel)],
+      mem = asinh((abs(.data$deviation) + 1 / .data$ratio - 1) * sign(.data$deviation))
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(mem = .data$mem / max(abs(.data$mem)) * 10)
 }
 
-#' Calculate and plot cosine similarity
+#' Calculate and cosine similarity
 #'
-#' @param flow_exps output of \code{\link{scale_expressions}}
-#' @param exp_label output of \code{\link{extract_labels}}
-#' @param files_inc value from \code{\link{extract_files}}
+#' @param exps_anno output of \code{\link{collate_expressions}}
 #'
-#' @return tibble: cosine similarities
+#' @return matrix: cosine similarities
 #' @export
 #'
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 #' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-#' flow_exps <- scale_expressions(flow_expr)
+#' flow_exps <- scale_expressions(flow_expr, c(0, 1))
 #' exp_label <- extract_labels(flow_item$data)
-#' files_inc <- extract_files(exp_label)
+#' exps_anno <- collate_expressions(flow_exps, exp_label)
 #'
-#' sim_cosine <- calc_sim_cosine(flow_exps, exp_label, files_inc$files)
-calc_sim_cosine <- function(flow_exps, exp_label, files_inc) {
-  flow_exps %>%
-    dplyr::bind_cols(exp_label, .name_repair = "minimal") %>%
-    dplyr::filter(file_name %in% files_inc) %>%
-    dplyr::select(-dplyr::all_of(names(exp_label))) %>%
+#' sim_cosine <- calc_sim_cosine(exps_anno)
+calc_sim_cosine <- function(exps_anno) {
+  exps_anno$data %>%
+    dplyr::select(dplyr::all_of(exps_anno$channels)) %>%
     as.matrix() %>%
     Radviz::cosine()
 }
 
 #' Calculate and plot Hilbert Similarity
 #'
-#' @param flow_exps output of \code{\link{scale_expressions}}
-#' @param exp_label output of \code{\link{extract_labels}}
-#' @param files_inc value from \code{\link{extract_files}}
-#' @param channels channels of interest
-#' @param bins optional: number of bins
-#' @param dimension optional: number of dimensions (> 2)
+#' @param exps_anno output of \code{\link{collate_expressions}}
+#' @param channels character: channels of interest
+#' @param bins optional integer: number of bins
+#' @param dimension optional integer: number of dimensions (> 2)
 #'
 #' @return
 #' \code{hilbert}: tibble: Hilbert similarities
@@ -90,70 +109,47 @@ calc_sim_cosine <- function(flow_exps, exp_label, files_inc) {
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 #' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-#' flow_exps <- scale_expressions(flow_expr)
+#' flow_exps <- scale_expressions(flow_expr, c(0, 1))
 #' exp_label <- extract_labels(flow_item$data)
-#' files_inc <- extract_files(exp_label)
+#' exps_anno <- collate_expressions(flow_exps, exp_label)
 #'
-#' sim_hilbert <- calc_sim_hilbert(flow_exps, exp_label, files_inc$files, flow_item$panel$antigen)
-calc_sim_hilbert <- function(flow_exps, exp_label, files_inc, channels, bins = 10, dimension = 4) {
-  # process data
-  source <- flow_exps %>%
-    dplyr::bind_cols(exp_label, .name_repair = "minimal") %>%
-    dplyr::filter(file_name %in% files_inc)
-
-  files <- source$file_name
-  matrix <- source %>% dplyr::select(dplyr::all_of(channels)) %>% as.matrix()
+#' sim_hilbert <- calc_sim_hilbert(exps_anno, flow_item$panel$antigen)
+calc_sim_hilbert <- function(exps_anno, channels, bins = 5, dimension = 4) {
+  matrix <- exps_anno$data %>% dplyr::select(dplyr::all_of(channels)) %>% as.matrix()
 
   # generate and apply cutting points, then extract Hilbert indices
   precut <- matrix %>% hilbertSimilarity::make.cut(bins + 1)
   index <- matrix %>% hilbertSimilarity::do.cut(precut) %>% hilbertSimilarity::do.hilbert(bins)
 
   # calculate Jensen-Shannon distances and perform Multi-Dimensional Scaling
-  dists <- table(index, files) %>% t() %>% hilbertSimilarity::js.dist()
+  dists <- table(index,  exps_anno$data$file) %>% t() %>% hilbertSimilarity::js.dist()
   hilbert <- MASS::isoMDS(dists, k = dimension)$points %>%
     as.data.frame() %>%
-    tibble::as_tibble(rownames = "File") %>%
+    tibble::as_tibble(rownames = "file") %>%
     dplyr::mutate(
-      Cells = table(files)[as.character(File)] %>% as.numeric(),
-      Strain = File %>% stringr::str_extract("[A-Z][0-9]{2}|[A-Z][0-9]{1}") %>% as.factor(),
-      Time = File %>% stringr::str_extract("[D]{1}[0-1]{2}") %>% as.factor())
+      cells = table(exps_anno$data$file)[as.character(.data$file)] %>% as.numeric(),
+      strain = stringr::str_extract(.data$file, "[A-Z][0-9]{2}|[A-Z][0-9]{1}") %>% as.factor(),
+      time = stringr::str_match(.data$file, "D([0-1]{2})")[, 2] %>% as.integer())
 
   return(list(hilbert = hilbert, dists = stats::as.dist(dists)))
 }
 
-#' Run FlowSOM on flowSet
+#' Summarize expression data for each channel
 #'
-#' @param flow value from \code{\link{import_fcs_path}}
-#' @param channels channels to consider
-#' @param clusters optional: number of clusters to generate
+#' @param expr_anno output of \code{\link{collate_expressions}}
+#' @param grouping columns to group by
 #'
-#' @return FlowSOM output
-#' @export
+#' @return tibble: summarized expression data
 #'
-#' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-#'
-#' som <- calc_som(flow_item$data, flow_item$panel$fcs_colname)
-calc_som <- function(flow, channels, clusters = 20) {
-  FlowSOM::FlowSOM(flow, colsToUse = channels, nClus = clusters)
-}
-
-#' Calculate summary
-#'
-#' @param flow_expr output of \code{\link{extract_expressions}}
-#' @param exp_label output of \code{\link{extract_labels}}
-#' @param selected selected channel
-#'
-#' @return tibble: summary
-#' @export
-#'
-#' @examples
+#' @examples \dontrun{
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 #' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
 #' exp_label <- extract_labels(flow_item$data)
+#' expr_anno <- collate_expressions(flow_expr, exp_label)
 #'
-#' summary <- calc_summary(flow_expr, exp_label, flow_item$panel$antigen[1])
-calc_summary <- function(flow_expr, exp_label, selected) {
+#' summary <- calc_summary(expr_anno, c("channel", "strain", "time", "file"))
+#' }
+calc_summary <- function(expr_anno, grouping) {
   # TODO: unsure what this function does, seek clarification
   do_thr_iqr <- function(x) {
     th <- min(x)
@@ -166,11 +162,10 @@ calc_summary <- function(flow_expr, exp_label, selected) {
     return(x)
   }
 
-  flow_expr %>%
-    dplyr::bind_cols(exp_label, .name_repair = "minimal") %>%
-    dplyr::mutate(channel = selected, value = .data[[selected]]) %>%
-    dplyr::group_by(channel, experiment, time, file_name) %>%
-    dplyr::summarise(median = stats::median(value),
-                     iqr = stats::IQR(value) %>% do_thr_iqr()) %>%
-    dplyr::ungroup()
+  expr_anno$data %>%
+    tidyr::pivot_longer(dplyr::all_of(expr_anno$channels), names_to = "channel") %>%
+    dplyr::group_by(dplyr::across(dplyr::all_of(grouping))) %>%
+    dplyr::summarise(mean = mean(.data$value),
+                     median = stats::median(.data$value),
+                     iqr = stats::IQR(.data$value) %>% do_thr_iqr())
 }

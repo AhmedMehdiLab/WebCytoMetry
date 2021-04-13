@@ -13,9 +13,7 @@ import_fcs_root(fcs_root)
 list: parsed FCS data
 }
 \description{
-A FCS folder is a folder with a `fcs` sub-directory containing `.fcs` files,
-optionally along with `labels.csv` (with headings `File+Name` and
-`Experiment`) and `markers.csv` (with `marker_label` and `marker_name`).
+See \code{\link{import_fcs_path}} for a description of FCS folders
 }
 \examples{
 flow_data <- import_fcs_root(system.file("extdata", package = "WebCytoMetry"))

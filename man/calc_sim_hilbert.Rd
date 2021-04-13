@@ -4,27 +4,16 @@
 \alias{calc_sim_hilbert}
 \title{Calculate and plot Hilbert Similarity}
 \usage{
-calc_sim_hilbert(
-  flow_exps,
-  exp_label,
-  files_inc,
-  channels,
-  bins = 10,
-  dimension = 4
-)
+calc_sim_hilbert(exps_anno, channels, bins = 5, dimension = 4)
 }
 \arguments{
-\item{flow_exps}{output of \code{\link{scale_expressions}}}
+\item{exps_anno}{output of \code{\link{collate_expressions}}}
 
-\item{exp_label}{output of \code{\link{extract_labels}}}
+\item{channels}{character: channels of interest}
 
-\item{files_inc}{value from \code{\link{extract_files}}}
+\item{bins}{optional integer: number of bins}
 
-\item{channels}{channels of interest}
-
-\item{bins}{optional: number of bins}
-
-\item{dimension}{optional: number of dimensions (> 2)}
+\item{dimension}{optional integer: number of dimensions (> 2)}
 }
 \value{
 \code{hilbert}: tibble: Hilbert similarities
@@ -37,9 +26,9 @@ Calculate and plot Hilbert Similarity
 \examples{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-flow_exps <- scale_expressions(flow_expr)
+flow_exps <- scale_expressions(flow_expr, c(0, 1))
 exp_label <- extract_labels(flow_item$data)
-files_inc <- extract_files(exp_label)
+exps_anno <- collate_expressions(flow_exps, exp_label)
 
-sim_hilbert <- calc_sim_hilbert(flow_exps, exp_label, files_inc$files, flow_item$panel$antigen)
+sim_hilbert <- calc_sim_hilbert(exps_anno, flow_item$panel$antigen)
 }

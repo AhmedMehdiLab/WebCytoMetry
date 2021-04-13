@@ -4,14 +4,10 @@
 \alias{calc_mem}
 \title{Perform marker enrichment modeling}
 \usage{
-calc_mem(summary, downsample = 1, seed = 1)
+calc_mem(expr_anno)
 }
 \arguments{
-\item{summary}{output of \code{\link{calc_summary}}}
-
-\item{downsample}{[0, 1) optional: sampling factor}
-
-\item{seed}{optional: random seed}
+\item{expr_anno}{output of \code{\link{collate_expressions}}}
 }
 \value{
 tibble: MEM values
@@ -23,7 +19,7 @@ Perform marker enrichment modeling
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
 exp_label <- extract_labels(flow_item$data)
+expr_anno <- collate_expressions(flow_expr, exp_label)
 
-summary <- calc_summary(flow_expr, exp_label, flow_item$panel$antigen[1])
-mem <- calc_mem(summary)
+mem <- calc_mem(expr_anno)
 }

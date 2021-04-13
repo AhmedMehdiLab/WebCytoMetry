@@ -4,12 +4,12 @@
 \alias{scale_expressions}
 \title{Scale expression data}
 \usage{
-scale_expressions(flow_expr, range = c(0, 1))
+scale_expressions(flow_expr, range)
 }
 \arguments{
 \item{flow_expr}{output of \code{\link{extract_expressions}}}
 
-\item{range}{optional: quantile range for scaling}
+\item{range}{integer[2]: quantile range for scaling}
 }
 \value{
 tibble: scaled expression matrix
@@ -20,5 +20,5 @@ Scale expression data
 \examples{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
 flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-flow_exps <- scale_expressions(flow_expr)
+flow_exps <- scale_expressions(flow_expr, c(0, 1))
 }

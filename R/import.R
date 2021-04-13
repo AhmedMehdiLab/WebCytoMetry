@@ -5,7 +5,7 @@
 #' `Experiment`) and `markers.csv` (with `marker_label` and `marker_name`).
 #'
 #' @param fcs_path path: path to FCS folder
-#' @param marker_index optional: index of flowFrame to use as panel source
+#' @param marker_index optional integer: index of flowFrame to use as panel source
 #'
 #' @importFrom magrittr %>%
 #' @return parsed FCS data
@@ -22,8 +22,9 @@ import_fcs_path <- function(fcs_path, marker_index = 1) {
   flowCore::pData(fcs_data)$file_name <- fcs_names
   flowCore::pData(fcs_data)$condition <- fcs_names
   flowCore::pData(fcs_data)$sample_id <- fcs_names
-  flowCore::pData(fcs_data)$experiment <- stringr::str_extract(fcs_names, "[A-Z][0-9]{2}|[A-Z][0-9][a-z][A-Z]{3}|[A-Z][0-9][A-Z]{2}|[A-Z][0-9]{1}")
   flowCore::pData(fcs_data)$patient_id <- fcs_names
+  flowCore::pData(fcs_data)$file <- stringr::str_match(fcs_names, "^(.*)\\..*$")[, 2]
+  flowCore::pData(fcs_data)$strain <- stringr::str_extract(fcs_names, "[A-Z][0-9]{2}|[A-Z][0-9][a-z][A-Z]{3}|[A-Z][0-9][A-Z]{2}|[A-Z][0-9]{1}")
   flowCore::pData(fcs_data)$time <- 10
 
   # process labels
@@ -33,7 +34,7 @@ import_fcs_path <- function(fcs_path, marker_index = 1) {
 
     for (i in seq_len(nrow(labels))) {
       match <- which(fcs_names == labels$`File+Name`[i])
-      flowCore::pData(fcs_data)$experiment[match] <- labels$Experiment[i]
+      flowCore::pData(fcs_data)$strain[match] <- labels$Experiment[i]
     }
   }
 
@@ -58,9 +59,7 @@ import_fcs_path <- function(fcs_path, marker_index = 1) {
 
 #' Import all FCS data from FCS folder sub-directories
 #'
-#' A FCS folder is a folder with a `fcs` sub-directory containing `.fcs` files,
-#' optionally along with `labels.csv` (with headings `File+Name` and
-#' `Experiment`) and `markers.csv` (with `marker_label` and `marker_name`).
+#' See \code{\link{import_fcs_path}} for a description of FCS folders
 #'
 #' @param fcs_root path: root directory of FCS folders
 #'
