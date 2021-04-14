@@ -2,12 +2,12 @@
 % Please edit documentation in R/calculate.R
 \name{calc_sim_hilbert}
 \alias{calc_sim_hilbert}
-\title{Calculate and plot Hilbert Similarity}
+\title{Calculate Hilbert Similarity}
 \usage{
-calc_sim_hilbert(exps_anno, channels, bins = 5, dimension = 4)
+calc_sim_hilbert(exps_info, channels, bins = 5, dimension = 4)
 }
 \arguments{
-\item{exps_anno}{output of \code{\link{collate_expressions}}}
+\item{exps_info}{output of \code{\link{collate_expressions}}}
 
 \item{channels}{character: channels of interest}
 
@@ -21,14 +21,12 @@ calc_sim_hilbert(exps_anno, channels, bins = 5, dimension = 4)
 \code{dists}: distance matrix
 }
 \description{
-Calculate and plot Hilbert Similarity
+Calculate Hilbert Similarity
 }
 \examples{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-flow_exps <- scale_expressions(flow_expr, c(0, 1))
-exp_label <- extract_labels(flow_item$data)
-exps_anno <- collate_expressions(flow_exps, exp_label)
+expr_info <- collate_expressions(flow_item)
+exps_info <- rescale_expressions(expr_info)
 
-sim_hilbert <- calc_sim_hilbert(exps_anno, flow_item$panel$antigen)
+sim_hilbert <- calc_sim_hilbert(exps_info, flow_item$panel$antigen)
 }

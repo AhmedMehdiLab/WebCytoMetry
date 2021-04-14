@@ -2,25 +2,23 @@
 % Please edit documentation in R/calculate.R
 \name{calc_sim_cosine}
 \alias{calc_sim_cosine}
-\title{Calculate and cosine similarity}
+\title{Calculate cosine similarity}
 \usage{
-calc_sim_cosine(exps_anno)
+calc_sim_cosine(exps_info)
 }
 \arguments{
-\item{exps_anno}{output of \code{\link{collate_expressions}}}
+\item{exps_info}{output of \code{\link{rescale_expressions}}}
 }
 \value{
 matrix: cosine similarities
 }
 \description{
-Calculate and cosine similarity
+Calculate cosine similarity
 }
 \examples{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-flow_exps <- scale_expressions(flow_expr, c(0, 1))
-exp_label <- extract_labels(flow_item$data)
-exps_anno <- collate_expressions(flow_exps, exp_label)
+expr_info <- collate_expressions(flow_item)
+exps_info <- rescale_expressions(expr_info)
 
-sim_cosine <- calc_sim_cosine(exps_anno)
+sim_cosine <- calc_sim_cosine(exps_info)
 }

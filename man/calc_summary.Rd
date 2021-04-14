@@ -4,10 +4,10 @@
 \alias{calc_summary}
 \title{Summarize expression data for each channel}
 \usage{
-calc_summary(expr_anno, grouping)
+calc_summary(expr_info, grouping)
 }
 \arguments{
-\item{expr_anno}{output of \code{\link{collate_expressions}}}
+\item{expr_info}{output of \code{\link{collate_expressions}}}
 
 \item{grouping}{columns to group by}
 }
@@ -20,10 +20,8 @@ Summarize expression data for each channel
 \examples{
 \dontrun{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-exp_label <- extract_labels(flow_item$data)
-expr_anno <- collate_expressions(flow_expr, exp_label)
+expr_info <- collate_expressions(flow_item)
 
-summary <- calc_summary(expr_anno, c("channel", "strain", "time", "file"))
+summary <- calc_summary(expr_info, c("channel", "strain", "time", "file"))
 }
 }

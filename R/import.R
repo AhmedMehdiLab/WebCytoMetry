@@ -19,13 +19,16 @@ import_fcs_path <- function(fcs_path, marker_index = 1) {
 
   # assign metadata
   fcs_names <- flowCore::pData(fcs_data)$name
+  matches <- stringr::str_match(fcs_names, "^((\\w+) D(\\d+) (.+))\\.fcs$")
+
   flowCore::pData(fcs_data)$file_name <- fcs_names
-  flowCore::pData(fcs_data)$condition <- fcs_names
+  flowCore::pData(fcs_data)$condition <- matches[, 5]
   flowCore::pData(fcs_data)$sample_id <- fcs_names
   flowCore::pData(fcs_data)$patient_id <- fcs_names
-  flowCore::pData(fcs_data)$file <- stringr::str_match(fcs_names, "^(.*)\\..*$")[, 2]
-  flowCore::pData(fcs_data)$strain <- stringr::str_extract(fcs_names, "[A-Z][0-9]{2}|[A-Z][0-9][a-z][A-Z]{3}|[A-Z][0-9][A-Z]{2}|[A-Z][0-9]{1}")
-  flowCore::pData(fcs_data)$time <- 10
+
+  flowCore::pData(fcs_data)$file <- matches[, 2]
+  flowCore::pData(fcs_data)$strain <- matches[, 3]
+  flowCore::pData(fcs_data)$time <- as.integer(matches[, 4])
 
   # process labels
   label_path <- file.path(fcs_path, "labels.csv")

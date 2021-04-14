@@ -1,155 +1,123 @@
-#' Project expressions into a two-dimensional circular plot
+#' Transform parsed FCS data with the arcsinh function
 #'
-#' @param exps_anno output of \code{\link{collate_expressions}}
-#' @param channels character: selected channels
+#' Expression data will be transformed with `asinh(a + b * x) + c`
 #'
-#' @return see \code{\link[Radviz]{do.radviz}}
+#' @param flow_item output of \code{\link{import_fcs_path}}
+#' @param ch_colnames character: channels to transform
+#' @param a optional double: parameter a
+#' @param b optional double: parameter b
+#' @param c optional double: parameter b
+#'
+#' @return parsed FCS data
 #' @export
 #'
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-#' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-#' flow_exps <- scale_expressions(flow_expr, c(0, 1))
-#' exp_label <- extract_labels(flow_item$data)
-#' exps_anno <- collate_expressions(flow_exps, exp_label)
-#'
-#' plot_radviz <- plot_radviz(exps_anno, flow_item$panel$antigen)
-#' plot(plot_radviz)
-plot_radviz <- function(exps_anno, channels) {
-  springs <- channels %>%
-    Radviz::make.S() %>%
-    Radviz::do.optimRadviz(calc_sim_cosine(exps_anno)) %>%
-    Radviz::get.optim() %>%
-    Radviz::make.S()
+#' flow_item <- rescale_item(flow_item, flow_item$panel$fcs_colname)
+rescale_item <- function(flow_item, ch_colnames = NULL, a = 1, b = 1, c = 0) {
+  if (is.null(ch_colnames)) return(flow_item)
 
-  exps_anno$data %>% Radviz::do.radviz(springs)
+  flow_item$data <- flowCore::transform(
+    flow_item$data,
+    flowCore::transformList(ch_colnames, flowCore::arcsinhTransform("", a, b, c))
+  )
+  return(flow_item)
 }
 
-#' Compute GLMM ADMB
+#' Perform clustering on parsed FCS data
 #'
-#' @param expn_anno output of \code{\link{collate_expressions}}
-#' @param meta "meta{n}": selected metaclustering method
-#' @param min_cluster_cells optional integer: minimum cells per cluster
+#' @param flow_item output of \code{\link{import_fcs_path}}
+#' @param channels character: channels to consider
+#' @param grid_x optional integer: number of columns of self-organising map
+#' @param grid_y optional integer: number of rows of self-organising map
+#' @param clusters optional integer: number of clusters to generate
 #'
-#' @return list: GLMM ADMB results per cluster
+#' @return
+#' \code{sce} see \code{\link[CATALYST]{cluster}}
+#'
+#' \code{som} see \code{\link[FlowSOM]{FlowSOM}}
 #' @export
 #'
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-#' exp_label <- extract_labels(flow_item$data)
-#' cluster <- do_cluster(flow_item$data, flow_item$panel, flow_item$panel$antigen)
-#' expn_anno <- collate_expressions(NULL, exp_label, cluster)
+#' flow_item <- rescale_item(flow_item, flow_item$panel$fcs_colname)
 #'
-#' glmm_list <- compute_glmm(expn_anno, "meta5")
-compute_glmm <- function(expn_anno, meta, min_cluster_cells = 0) {
-  # compute cluster sizes per file
-  clusters <- expn_anno$data %>%
-    dplyr::group_by(.data$strain, .data$time, .data$file, .data$cluster) %>%
-    dplyr::summarise(n = dplyr::n()) %>%
-    dplyr::filter(.data$n >= min_cluster_cells) %>%
-    dplyr::group_by(.data$strain, .data$time, .data$file) %>%
-    dplyr::mutate(total = sum(.data$n), logTotal = log(.data$total))
+#' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
+do_cluster <- function(flow_item, channels, grid_x = 10, grid_y = 10, clusters = 20) {
+  som_cols <- flow_item$panel$fcs_colname[match(channels, flow_item$panel$antigen)]
 
-  # iterate over clusters
-  sort(unique(expn_anno$data$cluster)) %>%
-    purrr::set_names() %>%
-    purrr::map(function(current_cluster) {
-      # model changes in size using GLMM assuming distribution of counts follows a negative binomial distribution
-      subset <- clusters %>% dplyr::filter(.data$cluster == current_cluster)
-      result <- try(glmmADMB::glmmadmb(n ~ strain + offset(logTotal), subset, family = "nbinom", admb.opts = glmmADMB::admbControl(shess = FALSE, noinit = FALSE)))
+  som <- flow_item$data %>% FlowSOM::FlowSOM(colsToUse = som_cols, nClus = clusters, xdim = grid_x, ydim = grid_y)
+  sce <- flow_item$data %>%
+    CATALYST::prepData(flow_item$panel, flowCore::pData(flow_item$data)) %>%
+    CATALYST::cluster(channels, grid_x, grid_y, clusters)
 
-      if (class(result) == "try-error") return(NULL)
-      if (nrow(summary(result)$coefficients) == 1) return(NULL)
-      return(list(tags = c("cluster" = current_cluster, "metacluster" = unique(expn_anno$data[[meta]][expn_anno$data$cluster == current_cluster])),
-                  item = result))
-    }) %>%
-    purrr::compact()
+  return(list(sce = sce, som = som))
 }
 
-#' Calculate lmer
+#' Extract expression information from parsed FCS data
 #'
-#' @param expr_anno output of \code{\link{collate_expressions}}
-#' @param meta "meta{n}": selected metaclustering method
-#' @param min_files optional: minimum files per cluster
+#' @param flow_item output of \code{\link{import_fcs_path}} or \code{\link{rescale_item}}
+#' @param cluster optional: value from \code{\link{do_cluster}}
+#' @param min_cells optional: minimum number of cells per file
 #'
-#' @return list: lmer results per cluster per channel
+#' @return expression information
 #' @export
 #'
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-#' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-#' exp_label <- extract_labels(flow_item$data)
-#' cluster <- do_cluster(flow_item$data, flow_item$panel, flow_item$panel$antigen)
-#' expr_anno <- collate_expressions(flow_expr, exp_label, cluster)
+#' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #'
-#' lmer_list <- compute_lmer(expr_anno, "meta6")
-compute_lmer <- function(expr_anno, meta, min_files = 7) {
-  # remove combinations of channels and clusters where 2/3 of the values are null
-  data <- expr_anno %>%
-    calc_summary(c("strain", "file", "cluster", "channel")) %>%
-    dplyr::group_by(.data$strain, .data$channel, .data$cluster) %>%
-    dplyr::mutate(fzero = sum(.data$median == 0) / length(.data$median)) %>%
-    dplyr::group_by(.data$channel, .data$cluster) %>%
-    dplyr::filter(min(.data$fzero) <= 2/3) %>%
+#' xprc_info <- collate_expressions(flow_item, cluster$sce)
+collate_expressions <- function(flow_item, cluster = NULL, min_cells = 0) {
+  # extract expression data
+  exp_values <- seq_along(flow_item$data) %>%
+    purrr::map_dfr(function(index) flow_item$data[[index]] %>% flowCore::exprs() %>% tibble::as_tibble()) %>%
+    dplyr::rename_with(function(name) flow_item$panel$antigen[flow_item$panel$fcs_colname == name])
+
+  # extract expression labels
+  exp_labels <- seq_along(flow_item$data) %>%
+    purrr::map_dfr(
+      function(index)
+        flowCore::pData(flow_item$data)[index,] %>%
+        tibble::as_tibble() %>%
+        dplyr::mutate(dplyr::across(.fns = as.factor)) %>%
+        dplyr::slice(rep(1, flowCore::nrow(flow_item$data[[index]])))
+    )
+
+  # if clustering is available, attach cluster data to labels
+  if (!is.null(cluster)) {
+    cluster_codes <- CATALYST::cluster_codes(cluster)
+    names(cluster_codes)[1] <- "cluster"
+
+    exp_labels$cluster <- cluster$cluster_id
+    exp_labels <- exp_labels %>% dplyr::left_join(cluster_codes)
+  }
+
+  # attach labels to expressions
+  expr_anno <- exp_values %>%
+    dplyr::bind_cols(exp_labels, .name_repair = "minimal") %>%
+    dplyr::group_by(.data$strain, .data$file) %>%
+    dplyr::filter(dplyr::n() >= min_cells) %>%
     dplyr::ungroup()
 
-  # iterate over clusters
-  sort(unique(data$cluster)) %>%
-    purrr::set_names() %>%
-    purrr::map(function(current_cluster) {
-      # iterate over channels
-      expr_anno$channels %>%
-        purrr::set_names() %>%
-        purrr::map(function(current_channel) {
-          # model change in signal intensity using a linear model
-          subset <- data %>% dplyr::filter(.data$cluster == current_cluster, .data$channel == current_channel)
-          result <- try(lme4::lmer(median ~ strain + (1|strain), subset))
-
-          if (class(result) == "try-error") return(NULL)
-          if (nrow(subset) <= min_files - 1) return(NULL)
-          return(list(tags = c("cluster" = current_cluster, "channel" = current_channel, "metacluster" = unique(expr_anno$data[[meta]][expr_anno$data$cluster == current_cluster])),
-                      item = result))
-        })
-    }) %>%
-    purrr::flatten() %>%
-    purrr::compact()
+  return(list(expr_anno = expr_anno, channels = colnames(exp_values), labels = colnames(exp_labels)))
 }
 
-#' Collate computation results
+#' Scale expression information
 #'
-#' @param results output of \code{\link{compute_glmm}} or \code{\link{compute_lmer}}
+#' @param expr_info output of \code{\link{collate_expressions}}
+#' @param range optional [0, 1): quantile range
 #'
-#' @return tibble: results
+#' @return scaled expression information
 #' @export
 #'
 #' @examples
 #' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-#' flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-#' exp_label <- extract_labels(flow_item$data)
-#' cluster <- do_cluster(flow_item$data, flow_item$panel, flow_item$panel$antigen)
-#' expr_anno <- collate_expressions(flow_expr, exp_label, cluster)
-#'
-#' lmer_list <- compute_lmer(expr_anno, "meta6")
-#' results <- collate_results(lmer_list)
-collate_results <- function(results) {
-  results %>%
-    purrr::map_dfr(function(result) {
-      summ <- summary(multcomp::glht(result$item, c("strainE7=0")), test = multcomp::adjusted("none"))
+#' expr_info <- collate_expressions(flow_item)
+#' exps_info <- rescale_expressions(expr_info)
+rescale_expressions <- function(expr_info, range = c(0, 1)) {
+  expr_info$expr_anno <- expr_info$expr_anno %>%
+    dplyr::mutate(dplyr::across(expr_info$channels, ~ Radviz::do.L(.x, function(x) quantile(x, range))))
 
-      # extract results
-      tibble::tibble(
-        contrast = names(summ$test$coefficients),
-        estimate = summ$test$coefficients,
-        std.err = summ$test$sigma,
-        p.value = summ$test$pvalues,
-        dplyr::bind_rows(result$tags)
-      )
-    }) %>%
-    dplyr::mutate(
-      # adjust results
-      p.value = ifelse(.data$p.value == 0, min(.data$p.value[.data$p.value != 0]) * 0.5, .data$p.value),
-      adj.p.v = length(levels(.data$cluster)) * .data$p.value,
-      log.p.v = -log10(.data$p.value),
-      loga.pv = -log10(.data$adj.p.v)
-    )
+  return(expr_info)
 }

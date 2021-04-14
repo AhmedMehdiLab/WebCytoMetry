@@ -2,24 +2,22 @@
 % Please edit documentation in R/calculate.R
 \name{calc_mem}
 \alias{calc_mem}
-\title{Perform marker enrichment modeling}
+\title{Calculate marker enrichment modeling values}
 \usage{
-calc_mem(expr_anno)
+calc_mem(expr_info)
 }
 \arguments{
-\item{expr_anno}{output of \code{\link{collate_expressions}}}
+\item{expr_info}{output of \code{\link{collate_expressions}}}
 }
 \value{
 tibble: MEM values
 }
 \description{
-Perform marker enrichment modeling
+Calculate marker enrichment modeling values
 }
 \examples{
 flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
-flow_expr <- extract_expressions(flow_item$data, flow_item$panel)
-exp_label <- extract_labels(flow_item$data)
-expr_anno <- collate_expressions(flow_expr, exp_label)
+expr_info <- collate_expressions(flow_item)
 
-mem <- calc_mem(expr_anno)
+mem <- calc_mem(expr_info)
 }
