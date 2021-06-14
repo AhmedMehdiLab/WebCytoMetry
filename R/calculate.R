@@ -130,6 +130,7 @@ calc_sim_hilbert <- function(exps_info, channels, bins = 5, dimension = 4) {
 #'
 #' @param xprc_info output of \code{\link{collate_expressions}}
 #' @param meta "meta{n}": selected metaclustering method
+#' @param formula character: formula expression
 #' @param min_cells optional integer: minimum cells per cluster
 #'
 #' @return list: GLMM ADMB results per cluster
@@ -140,8 +141,10 @@ calc_sim_hilbert <- function(exps_info, channels, bins = 5, dimension = 4) {
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'
-#' glmm_list <- compute_glmm(xprc_info, "meta6")
-compute_glmm <- function(xprc_info, meta, min_cells = 0) {
+#' glmm_list <- compute_glmm(xprc_info, "meta6", "n ~ strain + offset(logTotal)")
+compute_glmm <- function(xprc_info, meta, formula = NULL, min_cells = 0) {
+  if (is.null(formula)) return(list())
+
   # compute cluster sizes per file
   clusters <- xprc_info$expr_anno %>%
     dplyr::group_by(.data$strain, .data$time, .data$file, .data$cluster) %>%
@@ -156,11 +159,11 @@ compute_glmm <- function(xprc_info, meta, min_cells = 0) {
     purrr::map(function(current_cluster) {
       # model changes in size using GLMM assuming distribution of counts follows a negative binomial distribution
       subset <- clusters %>% dplyr::filter(.data$cluster == current_cluster)
-      result <- try(glmmADMB::glmmadmb(n ~ strain + offset(logTotal), subset, family = "nbinom", admb.opts = glmmADMB::admbControl(shess = FALSE, noinit = FALSE)))
+      result <- try(glmmADMB::glmmadmb(eval(parse(text = formula)), subset, family = "nbinom", admb.opts = glmmADMB::admbControl(shess = FALSE, noinit = FALSE)))
 
       if (class(result) == "try-error") return(NULL)
       if (nrow(summary(result)$coefficients) == 1) return(NULL)
-      return(list(tags = c("cluster" = current_cluster, "metacluster" = unique(xprc_info$expr_anno[[meta]][xprc_info$expr_anno$cluster == current_cluster])),
+      return(list(tags = c("cluster" = current_cluster, "channel" = NA, "metacluster" = unique(xprc_info$expr_anno[[meta]][xprc_info$expr_anno$cluster == current_cluster])),
                   item = result))
     }) %>%
     purrr::compact()
@@ -170,6 +173,7 @@ compute_glmm <- function(xprc_info, meta, min_cells = 0) {
 #'
 #' @param xprc_info output of \code{\link{collate_expressions}}
 #' @param meta "meta{n}": selected metaclustering method
+#' @param formula character: formula expression
 #' @param min_files optional: minimum files per cluster
 #'
 #' @return list: lmer results per cluster per channel
@@ -180,8 +184,10 @@ compute_glmm <- function(xprc_info, meta, min_cells = 0) {
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'
-#' lmer_list <- compute_lmer(xprc_info, "meta6")
-compute_lmer <- function(xprc_info, meta, min_files = 7) {
+#' lmer_list <- compute_lmer(xprc_info, "meta6", "median ~ strain + (1|strain)")
+compute_lmer <- function(xprc_info, meta, formula, min_files = 7) {
+  if (is.null(formula)) return(list())
+
   # remove combinations of channels and clusters where 2/3 of the values are null
   data <- xprc_info %>%
     calc_summary(c("strain", "file", "cluster", "channel")) %>%
@@ -201,7 +207,7 @@ compute_lmer <- function(xprc_info, meta, min_files = 7) {
         purrr::map(function(current_channel) {
           # model change in signal intensity using a linear model
           subset <- data %>% dplyr::filter(.data$cluster == current_cluster, .data$channel == current_channel)
-          result <- try(lme4::lmer(median ~ strain + (1|strain), subset))
+          result <- try(lme4::lmer(eval(parse(text = formula)), subset))
 
           if (class(result) == "try-error") return(NULL)
           if (nrow(subset) <= min_files - 1) return(NULL)
@@ -225,8 +231,8 @@ compute_lmer <- function(xprc_info, meta, min_files = 7) {
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'
-#' glmm_list <- compute_glmm(xprc_info, "meta6")
-#' lmer_list <- compute_lmer(xprc_info, "meta6")
+#' glmm_list <- compute_glmm(xprc_info, "meta6", "n ~ strain + offset(logTotal)")
+#' lmer_list <- compute_lmer(xprc_info, "meta6", "median ~ strain + (1|strain)")
 #'
 #' glmm_data <- compute_results(glmm_list)
 #' lmer_data <- compute_results(lmer_list)

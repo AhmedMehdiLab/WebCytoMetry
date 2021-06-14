@@ -5,8 +5,8 @@
 #' @export
 #'
 #' @examples \dontrun{
-#' start()
+#' webstart()
 #' }
-start <- function() {
+webstart <- function() {
   shiny::runApp(system.file("shiny", package = "WebCytoMetry"), launch.browser = T)
 }

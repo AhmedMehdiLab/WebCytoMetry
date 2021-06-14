@@ -8,7 +8,7 @@ SAMPLE <- c("Sample" = "sample_id")
 
 COMMON_OPTS <- c("Channel" = "channel", "File" = "file", "Strain" = "strain", "Time" = "time")
 COMPUTE_VAL <- c("Estimate" = "estimate", "Standard Error" = "std.err", "P-value" = "p.value", "Adjusted P-value" = "adj.p.v", "Log P-value" = "log.p.v", "Log Adjusted P-value" = "loga.pv")
-COMPUTE_EXT <- c("Cluster" = "cluster", "Metacluster" = "metacluster")
+COMPUTE_EXT <- c("Cluster" = "cluster", "Metacluster" = "metacluster", "Channel" = "channel")
 
 pane_main <- tabPanel(
   "Home",
