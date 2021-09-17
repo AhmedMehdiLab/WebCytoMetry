@@ -126,5 +126,5 @@ pane_project <- tabPanel(
 
 ui <- navbarPage("WebCytoMetry", pane_main, pane_cluster, pane_reduce
                  # pane_filter, pane_analyze, pane_project,
-                 , tabPanel("Debug", verbatimTextOutput("debug"))
+                 # , tabPanel("Debug", verbatimTextOutput("debug"))
 )
