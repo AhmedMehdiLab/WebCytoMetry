@@ -33,4 +33,4 @@ Imports:
     cluster,
     tidyr (>= 1.1.3)
 Remotes: 
-    bbolker/glmmadmb
+    github::bbolker/glmmADMB
