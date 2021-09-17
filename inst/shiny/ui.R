@@ -1,4 +1,5 @@
 library(shiny)
+library(shinyjs)
 
 NONE <- c("None" = "__NULL__")
 CLUSTER <- c("Cluster" = "cluster_id")
@@ -12,17 +13,23 @@ COMPUTE_EXT <- c("Cluster" = "cluster", "Metacluster" = "metacluster", "Channel"
 
 pane_main <- tabPanel(
   "Home",
+  shinyjs::useShinyjs(),
   sidebarLayout(
     sidebarPanel(
-      selectInput("home_source", "Source", NULL), br(),
-      selectInput("home_trans", "Transform Channels", NULL, multiple = TRUE),
-      fluidRow(
-        column(4, numericInput("trans_a", "a", 1)),
-        column(4, numericInput("trans_b", "b", 0.25)),
-        column(4, numericInput("trans_c", "c", 0))),
-      helpText("Channel values will be transformed using the asinh function")),
+      selectInput("home_source", "Flow Cytometry Project", NULL),
+      selectInput("home_sce", "Single Cell Experiment", NULL), br(),
+
+      # selectInput("home_trans", "Transform Channels", NULL, multiple = TRUE),
+      # fluidRow(
+      #   column(4, numericInput("trans_a", "a", 1)),
+      #   column(4, numericInput("trans_b", "b", 0.25)),
+      #   column(4, numericInput("trans_c", "c", 0))),
+      # helpText("Channel values will be transformed using the asinh function"), br(),
+
+      fileInput("home_upload", "Upload Flow Cytometry RDS", accept = ".rds"),
+      fileInput("home_up_sce", "Upload Single Cell Experiment RDS", accept = ".rds")),
     mainPanel(
-      verbatimTextOutput("home_main"), br(),
+      verbatimTextOutput("home_main"), hr(),
       tabsetPanel(id = "home_view", type = "pills")) ))
 
 pane_cluster <- tabPanel(
@@ -35,25 +42,30 @@ pane_cluster <- tabPanel(
                column(4, numericInput("som_max", "Metaclusters", 10, 2, 20))),
       selectInput("som_meta", "Metacluster", NULL), br(),
 
+      selectInput("sub_by", "Subset by", c(NONE, CONDITION, PATIENT, SAMPLE)),
+      selectInput("sub_to", "Subset as", NULL), br(),
+
       selectInput("abnd_mode", "Abundance", c(CLUSTER, SAMPLE)),
       fluidRow(column(6, selectInput("abnd_group", "Group", c(NONE, CONDITION, PATIENT))),
                column(6, selectInput("abnd_shape", "Shape", c(NONE, CONDITION, PATIENT)))), br(),
 
-      selectInput("heat_expr", "Heatmap Expression", NULL, multiple = TRUE),
-      selectInput("heat_freq", "Heatmap Frequency", NULL)),
+      selectInput("exph_by", "Expression Group", c("sample_id", "cluster_id", "both")),
+      selectInput("mlth_freq", "Multi Heatmap Frequency", NULL)),
     mainPanel(tabsetPanel(
       tabPanel("Abundances", plotOutput("plot_abnd")),
       tabPanel("Codes", plotOutput("plot_code")),
       tabPanel("Expressions", plotOutput("plot_clxp")),
-      tabPanel("Heatmap", plotOutput("plot_heat")),
-      tabPanel("Star Plot", plotOutput("plot_star")) ))))
+      tabPanel("Expression Heatmap", plotOutput("plot_expr")),
+      tabPanel("Multi Heatmap", plotOutput("plot_heat"))
+      # tabPanel("Star Plot", plotOutput("plot_star"))
+))))
 
 pane_reduce <- tabPanel(
   "Reduce",
   sidebarLayout(
     sidebarPanel(
       selectInput("dr_method", "Reduction Method", c("Uniform Manifold Approximation and Projection" = "UMAP", "t-Distributed Stochastic Neighbor Embedding" = "TSNE", "Principal Component Analysis" = "PCA", "Multi-Dimensional Scaling" = "MDS", "Diffusion Map" = "DiffusionMap")),
-      fluidRow(column(6, selectInput("dr_color", "Color by", NULL)),
+      fluidRow(column(6, selectInput("dr_color", "Color by", NULL, multiple = TRUE)),
                column(6, selectInput("dr_facet", "Facet by", NULL))),
       numericInput("dr_cells", "Cells Per Sample", 50, 0),
       helpText("All cells will be used if set to 0")),
@@ -99,6 +111,10 @@ pane_project <- tabPanel(
       fluidRow(column(6, selectInput("vol_color", "Color", c(NONE, COMPUTE_EXT))),
                column(6, selectInput("vol_facet", "Facet", c(NONE, COMPUTE_EXT)))), br(),
 
+      textInput("glmm_form", "GLMM Formula", "n ~ strain + offset(logTotal)"),
+      textInput("lmer_form", "LMER Formula", "median ~ strain + (1|strain)"),
+      textInput("hypothesis", "Hypothesis", "strainE7 = 0"), br(),
+
       numericInput("glmm_min", "GLMM Minimum Cells Per File", 50, 0),
       numericInput("lmer_min", "LMER Minimum Files Per Cluster", 5, 0)),
     mainPanel(tabsetPanel(
@@ -106,6 +122,7 @@ pane_project <- tabPanel(
       tabPanel("GLMM Volcano", plotOutput("plot_glmm")),
       tabPanel("LMER Volcano", plotOutput("plot_lmer")) ))))
 
-ui <- navbarPage("WebCytoMetry", pane_main, pane_cluster, pane_reduce, pane_filter, pane_analyze, pane_project
-  , tabPanel("Debug", verbatimTextOutput("debug"))
+ui <- navbarPage("WebCytoMetry", pane_main, pane_cluster, pane_reduce,
+                 # pane_filter, pane_analyze, pane_project,
+                 tabPanel("Debug", verbatimTextOutput("debug"))
 )

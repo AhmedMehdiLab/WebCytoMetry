@@ -142,9 +142,7 @@ calc_sim_hilbert <- function(exps_info, channels, bins = 5, dimension = 4) {
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'
 #' glmm_list <- compute_glmm(xprc_info, "meta6", "n ~ strain + offset(logTotal)")
-compute_glmm <- function(xprc_info, meta, formula = NULL, min_cells = 0) {
-  if (is.null(formula)) return(list())
-
+compute_glmm <- function(xprc_info, meta, formula, min_cells = 0) {
   # compute cluster sizes per file
   clusters <- xprc_info$expr_anno %>%
     dplyr::group_by(.data$strain, .data$time, .data$file, .data$cluster) %>%
@@ -186,8 +184,6 @@ compute_glmm <- function(xprc_info, meta, formula = NULL, min_cells = 0) {
 #'
 #' lmer_list <- compute_lmer(xprc_info, "meta6", "median ~ strain + (1|strain)")
 compute_lmer <- function(xprc_info, meta, formula, min_files = 7) {
-  if (is.null(formula)) return(list())
-
   # remove combinations of channels and clusters where 2/3 of the values are null
   data <- xprc_info %>%
     calc_summary(c("strain", "file", "cluster", "channel")) %>%
@@ -210,7 +206,7 @@ compute_lmer <- function(xprc_info, meta, formula, min_files = 7) {
           result <- try(lme4::lmer(eval(parse(text = formula)), subset))
 
           if (class(result) == "try-error") return(NULL)
-          if (nrow(subset) <= min_files - 1) return(NULL)
+          if (nrow(subset) < min_files) return(NULL)
           return(list(tags = c("cluster" = current_cluster, "channel" = current_channel, "metacluster" = unique(xprc_info$expr_anno[[meta]][xprc_info$expr_anno$cluster == current_cluster])),
                       item = result))
         })
@@ -234,12 +230,12 @@ compute_lmer <- function(xprc_info, meta, formula, min_files = 7) {
 #' glmm_list <- compute_glmm(xprc_info, "meta6", "n ~ strain + offset(logTotal)")
 #' lmer_list <- compute_lmer(xprc_info, "meta6", "median ~ strain + (1|strain)")
 #'
-#' glmm_data <- compute_results(glmm_list)
-#' lmer_data <- compute_results(lmer_list)
-compute_results <- function(results) {
+#' glmm_data <- compute_results(glmm_list, "strainE7=0")
+#' lmer_data <- compute_results(lmer_list, "strainE7=0")
+compute_results <- function(results, hypothesis) {
   results %>%
     purrr::map_dfr(function(result) {
-      summ <- summary(multcomp::glht(result$item, c("strainE7=0")), test = multcomp::adjusted("none"))
+      summ <- summary(multcomp::glht(result$item, hypothesis), test = multcomp::adjusted("none"))
 
       # extract results
       tibble::tibble(

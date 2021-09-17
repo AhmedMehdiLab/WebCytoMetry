@@ -4,12 +4,14 @@
 \alias{compute_glmm}
 \title{Compute GLMM ADMB}
 \usage{
-compute_glmm(xprc_info, meta, min_cells = 0)
+compute_glmm(xprc_info, meta, formula, min_cells = 0)
 }
 \arguments{
 \item{xprc_info}{output of \code{\link{collate_expressions}}}
 
 \item{meta}{"meta{n}": selected metaclustering method}
+
+\item{formula}{character: formula expression}
 
 \item{min_cells}{optional integer: minimum cells per cluster}
 }
@@ -24,5 +26,5 @@ flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCy
 cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 xprc_info <- collate_expressions(flow_item, cluster$sce)
 
-glmm_list <- compute_glmm(xprc_info, "meta6")
+glmm_list <- compute_glmm(xprc_info, "meta6", "n ~ strain + offset(logTotal)")
 }

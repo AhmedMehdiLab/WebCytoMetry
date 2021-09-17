@@ -4,7 +4,7 @@
 \alias{compute_results}
 \title{Collate computation results}
 \usage{
-compute_results(results)
+compute_results(results, hypothesis)
 }
 \arguments{
 \item{results}{output of \code{\link{compute_glmm}} or \code{\link{compute_lmer}}}
@@ -20,9 +20,9 @@ flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCy
 cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 xprc_info <- collate_expressions(flow_item, cluster$sce)
 
-glmm_list <- compute_glmm(xprc_info, "meta6")
-lmer_list <- compute_lmer(xprc_info, "meta6")
+glmm_list <- compute_glmm(xprc_info, "meta6", "n ~ strain + offset(logTotal)")
+lmer_list <- compute_lmer(xprc_info, "meta6", "median ~ strain + (1|strain)")
 
-glmm_data <- compute_results(glmm_list)
-lmer_data <- compute_results(lmer_list)
+glmm_data <- compute_results(glmm_list, "strainE7=0")
+lmer_data <- compute_results(lmer_list, "strainE7=0")
 }

@@ -4,12 +4,14 @@
 \alias{compute_lmer}
 \title{Calculate lmer}
 \usage{
-compute_lmer(xprc_info, meta, min_files = 7)
+compute_lmer(xprc_info, meta, formula, min_files = 7)
 }
 \arguments{
 \item{xprc_info}{output of \code{\link{collate_expressions}}}
 
 \item{meta}{"meta{n}": selected metaclustering method}
+
+\item{formula}{character: formula expression}
 
 \item{min_files}{optional: minimum files per cluster}
 }
@@ -24,5 +26,5 @@ flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCy
 cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 xprc_info <- collate_expressions(flow_item, cluster$sce)
 
-lmer_list <- compute_lmer(xprc_info, "meta6")
+lmer_list <- compute_lmer(xprc_info, "meta6", "median ~ strain + (1|strain)")
 }
