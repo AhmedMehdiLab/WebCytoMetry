@@ -18,7 +18,7 @@ scaled expression information
 Scale expression information
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 expr_info <- collate_expressions(flow_item)
 exps_info <- rescale_expressions(expr_info)
 }

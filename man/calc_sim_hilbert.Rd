@@ -24,7 +24,7 @@ calc_sim_hilbert(exps_info, channels, bins = 5, dimension = 4)
 Calculate Hilbert Similarity
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 expr_info <- collate_expressions(flow_item)
 exps_info <- rescale_expressions(expr_info)
 

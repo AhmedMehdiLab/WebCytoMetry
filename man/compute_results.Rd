@@ -8,6 +8,8 @@ compute_results(results, hypothesis)
 }
 \arguments{
 \item{results}{output of \code{\link{compute_glmm}} or \code{\link{compute_lmer}}}
+
+\item{hypothesis}{character: hypothesis to test}
 }
 \value{
 tibble: results
@@ -16,7 +18,7 @@ tibble: results
 Collate computation results
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 xprc_info <- collate_expressions(flow_item, cluster$sce)
 

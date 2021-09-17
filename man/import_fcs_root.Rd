@@ -16,5 +16,5 @@ list: parsed FCS data
 See \code{\link{import_fcs_path}} for a description of FCS folders
 }
 \examples{
-flow_data <- import_fcs_root(system.file("extdata", package = "WebCytoMetry"))
+flow_data <- import_fcs_root(system.file("extdata", "fcs", package = "WebCytoMetry"))
 }

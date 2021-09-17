@@ -24,6 +24,6 @@ parsed FCS data
 Expression data will be transformed with `asinh(a + b * x) + c`
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 flow_item <- rescale_item(flow_item, flow_item$panel$fcs_colname)
 }

@@ -12,7 +12,7 @@
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' flow_item <- rescale_item(flow_item, flow_item$panel$fcs_colname)
 rescale_item <- function(flow_item, ch_colnames = NULL, a = 1, b = 1, c = 0) {
   if (is.null(ch_colnames)) return(flow_item)
@@ -39,7 +39,7 @@ rescale_item <- function(flow_item, ch_colnames = NULL, a = 1, b = 1, c = 0) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' flow_item <- rescale_item(flow_item, flow_item$panel$fcs_colname)
 #'
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
@@ -64,7 +64,7 @@ do_cluster <- function(flow_item, channels, grid_x = 10, grid_y = 10, clusters =
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #'
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
@@ -112,7 +112,7 @@ collate_expressions <- function(flow_item, cluster = NULL, min_cells = 0) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' expr_info <- collate_expressions(flow_item)
 #' exps_info <- rescale_expressions(expr_info)
 rescale_expressions <- function(expr_info, range = c(0, 1)) {

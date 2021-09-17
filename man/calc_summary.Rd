@@ -19,7 +19,7 @@ Summarize expression data for each channel
 }
 \examples{
 \dontrun{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 expr_info <- collate_expressions(flow_item)
 
 summary <- calc_summary(expr_info, c("channel", "strain", "time", "file"))

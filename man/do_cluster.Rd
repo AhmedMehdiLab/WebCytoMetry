@@ -26,7 +26,7 @@ do_cluster(flow_item, channels, grid_x = 10, grid_y = 10, clusters = 20)
 Perform clustering on parsed FCS data
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 flow_item <- rescale_item(flow_item, flow_item$panel$fcs_colname)
 
 cluster <- do_cluster(flow_item, flow_item$panel$antigen)

@@ -16,7 +16,7 @@ tibble: MEM values
 Calculate marker enrichment modeling values
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 expr_info <- collate_expressions(flow_item)
 
 mem <- calc_mem(expr_info)

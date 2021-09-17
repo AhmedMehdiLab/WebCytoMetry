@@ -6,7 +6,7 @@
 #' @return tibble: summarized expression data
 #'
 #' @examples \dontrun{
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' expr_info <- collate_expressions(flow_item)
 #'
 #' summary <- calc_summary(expr_info, c("channel", "strain", "time", "file"))
@@ -40,7 +40,7 @@ calc_summary <- function(expr_info, grouping) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' expr_info <- collate_expressions(flow_item)
 #'
 #' mem <- calc_mem(expr_info)
@@ -74,7 +74,7 @@ calc_mem <- function(expr_info) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' expr_info <- collate_expressions(flow_item)
 #' exps_info <- rescale_expressions(expr_info)
 #'
@@ -100,7 +100,7 @@ calc_sim_cosine <- function(exps_info) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' expr_info <- collate_expressions(flow_item)
 #' exps_info <- rescale_expressions(expr_info)
 #'
@@ -137,7 +137,7 @@ calc_sim_hilbert <- function(exps_info, channels, bins = 5, dimension = 4) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'
@@ -178,7 +178,7 @@ compute_glmm <- function(xprc_info, meta, formula, min_cells = 0) {
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'
@@ -218,12 +218,13 @@ compute_lmer <- function(xprc_info, meta, formula, min_files = 7) {
 #' Collate computation results
 #'
 #' @param results output of \code{\link{compute_glmm}} or \code{\link{compute_lmer}}
+#' @param hypothesis character: hypothesis to test
 #'
 #' @return tibble: results
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 #' cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 #' xprc_info <- collate_expressions(flow_item, cluster$sce)
 #'

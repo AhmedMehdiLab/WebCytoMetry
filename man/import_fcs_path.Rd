@@ -20,5 +20,5 @@ optionally along with `labels.csv` (with headings `File+Name` and
 `Experiment`) and `markers.csv` (with `marker_label` and `marker_name`).
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 }

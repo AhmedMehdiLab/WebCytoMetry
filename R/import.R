@@ -12,7 +12,7 @@
 #' @export
 #'
 #' @examples
-#' flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+#' flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 import_fcs_path <- function(fcs_path, marker_index = 1) {
   # process FCS files
   fcs_data <- suppressWarnings(flowCore::read.flowSet(path = file.path(fcs_path, "fcs")))
@@ -70,7 +70,7 @@ import_fcs_path <- function(fcs_path, marker_index = 1) {
 #' @export
 #'
 #' @examples
-#' flow_data <- import_fcs_root(system.file("extdata", package = "WebCytoMetry"))
+#' flow_data <- import_fcs_root(system.file("extdata", "fcs", package = "WebCytoMetry"))
 import_fcs_root <- function(fcs_root) {
   flow_data <- list()
 

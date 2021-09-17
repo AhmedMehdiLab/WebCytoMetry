@@ -22,7 +22,7 @@ list: GLMM ADMB results per cluster
 Compute GLMM ADMB
 }
 \examples{
-flow_item <- import_fcs_path(system.file("extdata", "KatJanin", package = "WebCytoMetry"))
+flow_item <- import_fcs_path(system.file("extdata", "fcs", "KatJanin", package = "WebCytoMetry"))
 cluster <- do_cluster(flow_item, flow_item$panel$antigen)
 xprc_info <- collate_expressions(flow_item, cluster$sce)
 
