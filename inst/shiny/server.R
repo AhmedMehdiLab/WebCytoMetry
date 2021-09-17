@@ -25,13 +25,12 @@ server <- function(input, output, session) {
 
   # populate cache
   isolate({
-    cache$items$`Use SCE data` <- ""
-
     item <- import_fcs_root(system.file("extdata", "fcs", package = "WebCytoMetry"))
     for (name in names(item)) cache$items[[name]] <- item[[name]]
 
     sces <- list.files(system.file("extdata", "sce", package = "WebCytoMetry"), full.names = TRUE)
     for (name in sces) cache$sce[[tools::file_path_sans_ext(basename(name))]] <- readRDS(name)
+    cache$items$`Use SCE data` <- ""
   })
 
   # load essential data
@@ -59,17 +58,17 @@ server <- function(input, output, session) {
   observe({updateSelectInput(session, "som_channels", choices = if (flow_not_sce()) ch_antigen() else ch_colname())})
   observe({updateSelectInput(session, "som_meta", choices = metaclusts())})
   observe({updateSelectInput(session, "mlth_freq", choices = c("Abundances" = "abundances", ch_antigen()))})
-  observe({updateSelectInput(session, "dr_color", choices = c(CLUSTER, CONDITION, SAMPLE, PATIENT, ch_antigen(), metaclusts()))})
+  observe({updateSelectInput(session, "dr_color", choices = c(CLUSTER, CONDITION, SAMPLE, PATIENT, if (flow_not_sce()) ch_antigen() else ch_colname(), metaclusts()), selected = CLUSTER)})
   observe({updateSelectInput(session, "dr_facet", choices = c(NONE, CLUSTER, CONDITION, SAMPLE, PATIENT))})
 
   observe({updateSelectInput(session, "hil_channels", choices = ch_antigen())})
   observe({updateSelectInput(session, "rad_channels", choices = ch_antigen())})
 
   # debounce
-  # db_home_trans <- reactive({input$home_trans}) %>% debounce(1000)
-  db_som_channels <- reactive({input$som_channels}) %>% debounce(1000)
-  # db_hil_channels <- reactive({input$hil_channels}) %>% debounce(1000)
-  # db_rad_channels <- reactive({input$rad_channels}) %>% debounce(1000)
+  # db_home_trans <- reactive({input$home_trans}) %>% debounce(3000)
+  db_som_channels <- reactive({input$som_channels}) %>% debounce(3000)
+  # db_hil_channels <- reactive({input$hil_channels}) %>% debounce(3000)
+  # db_rad_channels <- reactive({input$rad_channels}) %>% debounce(3000)
 
   # extract expression data
   # expr_info <- reactive({collate_expressions(flow_proc(), min_cells = 0)}) #input$files_min)})
@@ -93,10 +92,21 @@ server <- function(input, output, session) {
   cluster <- reactive({
     validate(need(length(db_som_channels()) > 1, "Select two or more channels in 'Cluster' tab for clustering"))
     if (flow_not_sce()) {
-      do_cluster(flow_proc(), db_som_channels(), input$som_x, input$som_y, input$som_max)
+      result <- do_cluster(flow_proc(), db_som_channels(), input$som_x, input$som_y, input$som_max)
+      sce <- result$sce
+      SummarizedExperiment::colData(sce) <- dplyr::left_join(
+        sce@colData %>% as.data.frame(),
+        CATALYST::cluster_codes(sce) %>% as.data.frame(),
+        c("cluster_id" = "som100")) %>% S4Vectors::DataFrame()
+      result$sce <- sce
+      return(result)
     } else {
       sce <- CATALYST::cluster(flow_sce(), db_som_channels(), input$som_x, input$som_y, input$som_max)
       sce@colData$sample <- sce$sample_id # block MultiHeatmap error
+      SummarizedExperiment::colData(sce) <- dplyr::left_join(
+        sce@colData %>% as.data.frame(),
+        CATALYST::cluster_codes(sce) %>% as.data.frame(),
+        c("cluster_id" = "som100")) %>% S4Vectors::DataFrame()
       list(sce = sce)
     }
   })
@@ -133,6 +143,7 @@ server <- function(input, output, session) {
 
   output$plot_abnd <- renderPlot({CATALYST::plotAbundances(sce(), input$som_meta, input$abnd_mode, check(input$abnd_group), check(input$abnd_shape))})
   output$plot_code <- renderPlot({CATALYST::plotCodes(sce(), input$som_meta)})
+  output$plot_count <- renderPlot({CATALYST::plotCounts(sce(), input$som_meta, "condition", input$count_prop)})
   output$plot_clxp <- renderPlot({CATALYST::plotClusterExprs(sce(), input$som_meta, NULL)})
   output$plot_expr <- renderPlot({
     validate(need(!is.null(db_som_channels()), "Select one or more channels"))
@@ -145,6 +156,7 @@ server <- function(input, output, session) {
   # output$plot_star <- renderPlot({FlowSOM::PlotStars(cluster()$som$FlowSOM, backgroundValues = cluster()$som$metaclustering)})
 
   output$plot_dr <- renderPlot({
+    set.seed(1)
     sce() %>%
       CATALYST::runDR(input$dr_method, check(input$dr_cells), features = db_som_channels()) %>%
       CATALYST::plotDR(NULL, input$dr_color, check(input$dr_facet), ncol = 5)

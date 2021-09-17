@@ -47,13 +47,15 @@ pane_cluster <- tabPanel(
 
       selectInput("abnd_mode", "Abundance", c(CLUSTER, SAMPLE)),
       fluidRow(column(6, selectInput("abnd_group", "Group", c(NONE, CONDITION, PATIENT))),
-               column(6, selectInput("abnd_shape", "Shape", c(NONE, CONDITION, PATIENT)))), br(),
+               column(6, selectInput("abnd_shape", "Shape", c(NONE, CONDITION, PATIENT)))),
+      checkboxInput("count_prop", "Proportional Count"), br(),
 
       selectInput("exph_by", "Expression Group", c("sample_id", "cluster_id", "both")),
       selectInput("mlth_freq", "Multi Heatmap Frequency", NULL)),
     mainPanel(tabsetPanel(
       tabPanel("Abundances", plotOutput("plot_abnd")),
       tabPanel("Codes", plotOutput("plot_code")),
+      tabPanel("Counts", plotOutput("plot_count")),
       tabPanel("Expressions", plotOutput("plot_clxp")),
       tabPanel("Expression Heatmap", plotOutput("plot_expr")),
       tabPanel("Multi Heatmap", plotOutput("plot_heat"))
@@ -122,7 +124,7 @@ pane_project <- tabPanel(
       tabPanel("GLMM Volcano", plotOutput("plot_glmm")),
       tabPanel("LMER Volcano", plotOutput("plot_lmer")) ))))
 
-ui <- navbarPage("WebCytoMetry", pane_main, pane_cluster, pane_reduce,
+ui <- navbarPage("WebCytoMetry", pane_main, pane_cluster, pane_reduce
                  # pane_filter, pane_analyze, pane_project,
-                 tabPanel("Debug", verbatimTextOutput("debug"))
+                 , tabPanel("Debug", verbatimTextOutput("debug"))
 )
