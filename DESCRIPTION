@@ -2,10 +2,12 @@ Package: WebCytoMetry
 Type: Package
 Title: Web Interface for viewing flow cytometry data
 Version: 1.0.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Authors@R: 
+    c(person("Lilin", "Yang", role = c("aut", "cre"),
+             email = "lilin.yang@uq.net.au"),
+      person("Ahmed", "Mehdi", role = "ctb", email = "a.mehdi@imb.uq.edu.au"))
+Description: Provides both command-line and web interfaces for visualising
+    flow cytometry data
 Depends: R (>= 4.0.0)
 License: file LICENSE
 Encoding: UTF-8
