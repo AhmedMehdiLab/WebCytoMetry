@@ -8,13 +8,15 @@ Web Interface for viewing Flow Cytometry Data
 ## Installation
 To install this package, run:
 
-```
+``` r
+# install.packages("remotes")
 remotes::install_github("AhmedMehdiLab/WebCytoMetry")
 ```
 
 ## Usage
 To start the web application, run:
 
-```
+``` r
+library(WebCytoMetry)
 webstart()
 ```
