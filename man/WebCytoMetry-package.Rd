@@ -6,7 +6,15 @@
 \alias{WebCytoMetry-package}
 \title{WebCytoMetry: Web Interface for viewing flow cytometry data}
 \description{
-More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Provides both command-line and web interfaces for visualising flow cytometry data.
+}
+\author{
+\strong{Maintainer}: Lilin Yang \email{lilin.yang@uq.net.au}
+
+Other contributors:
+\itemize{
+  \item Ahmed Mehdi \email{a.mehdi@imb.uq.edu.au} [contributor]
+}
+
 }
 \keyword{internal}
